@@ -46,12 +46,12 @@ func main() {
 	// Defina os parâmetros do teste
 	userName := "rafael.oliveira@m4sistemas.com.br"
 	//folderPath := "testcase/provq" // Caminho da pasta com os arquivos
-	//folderPath := "testcase/rest" // Caminho da pasta com os arquivos
+	folderPath := "testcase/rest/Hermes" // Caminho da pasta com os arquivos
 	//folderPath := "testcase/solicitacao" // Caminho da pasta com os arquivos
-	folderPath := "testcase/provq/RSA_PROVQ_POS" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/provq/SIXBELL+VOLTE" // Caminho da pasta com os arquivos
 
 	description := ""
-	idProject := "138"
+	idProject := "277"  // Hermes
 	idSchemaSPS := "21" // POS
 	var successList []string
 	var errorList []string
@@ -76,6 +76,8 @@ func main() {
 	fmt.Println("				  137  MAGNOLIA")
 	fmt.Println("				  138  RSA")
 	fmt.Println("				  156  ESIM")
+	fmt.Println("				  203  VOLTE")
+	fmt.Println("	->			  277  Hermes")
 	fmt.Print(" -> Digite o idProject: ")
 	fmt.Scanln(&idProject)
 
@@ -122,20 +124,20 @@ func main() {
 			continue
 		}
 		fmt.Println("✅ Test case processado:", testName)
+		/*
+			// Inserir no banco
+			err = database.InsertTestCase(db, idType, testName, processedSQL, description, userName, idProject, idSchemaSPS)
+			if err != nil {
+				log.Printf("❌ Erro ao inserir %s no banco: %v", testName, err)
+				errorList = append(errorList, testName) // Adiciona à lista de erros
 
-		// Inserir no banco
-		err = database.InsertTestCase(db, idType, testName, processedSQL, description, userName, idProject, idSchemaSPS)
-		if err != nil {
-			log.Printf("❌ Erro ao inserir %s no banco: %v", testName, err)
-			errorList = append(errorList, testName) // Adiciona à lista de erros
-
-			continue
-		}
-		fmt.Println("✅ Test case inserido no banco:", testName)
-		successList = append(successList, testName) // Adiciona à lista de sucesso
-
-		//utils.SimulaInsert(idType, testName, processedSQL, userName, idProject, idSchemaSPS)
-		//fmt.Println(db)
+				continue
+			}
+			fmt.Println("✅ Test case inserido no banco:", testName)
+			successList = append(successList, testName) // Adiciona à lista de sucesso
+		*/
+		utils.SimulaInsert(idType, testName, processedSQL, userName, idProject, idSchemaSPS)
+		fmt.Println(db)
 
 	}
 
@@ -155,4 +157,6 @@ func main() {
 	} else {
 		fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
 	}
+
+	fmt.Println("Processamento concluído!")
 }
