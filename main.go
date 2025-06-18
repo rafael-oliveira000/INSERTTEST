@@ -41,25 +41,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(db)
 	fmt.Println("✅ Repositorio conectado ao BD")
 
 	// Defina os parâmetros do teste
 	userName := "rafael.oliveira@m4sistemas.com.br"
 	//folderPath := "testcase/provq" // Caminho da pasta com os arquivos
-	folderPath := "testcase/rest/Hermes" // Caminho da pasta com os arquivos
-	//folderPath := "testcase/solicitacao" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/rest/Hermes" // Caminho da pasta com os arquivos
+	folderPath := "testcase/solicitacao" // Caminho da pasta com os arquivos
 	//folderPath := "testcase/provq/SIXBELL+VOLTE" // Caminho da pasta com os arquivos
 
 	description := ""
-	idProject := "277"  // Hermes
+	idProject := "116"  // insertTest
 	idSchemaSPS := "21" // POS
-	var successList []string
-	var errorList []string
+	//	var successList []string
+	//	var errorList []string
 
 	// Usuário confirma que alterou a variavel folderPath
 	fmt.Println("❌ ATENÇÃO ❌ 📂 Alterou o valor de folderPath para o diretório desejado?")
 	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Confirma?\t<SIM> Enter \n\t\t<NAO> ctrl + c")
-	fmt.Scanln(&folderPath)
+	//	fmt.Scanln(&folderPath)
 
 	fmt.Println("__________________________________________________________________________")
 	fmt.Println("userName default: " + userName)
@@ -69,7 +70,7 @@ func main() {
 
 	// Solicita ao usuário para inserir os valores
 	fmt.Println("__________________________________________________________________________")
-	fmt.Println("				  116  InsertTest")
+	fmt.Println("	->			  116  InsertTest")
 	fmt.Println("				  76   SequenciaEda+VOLTE")
 	fmt.Println("				  201  SequenciaEda")
 	fmt.Println("				  136  VNPSIX+VOLTE")
@@ -77,9 +78,9 @@ func main() {
 	fmt.Println("				  138  RSA")
 	fmt.Println("				  156  ESIM")
 	fmt.Println("				  203  VOLTE")
-	fmt.Println("	->			  277  Hermes")
+	fmt.Println("				  277  Hermes")
 	fmt.Print(" -> Digite o idProject: ")
-	fmt.Scanln(&idProject)
+	//	fmt.Scanln(&idProject)
 
 	// Exibe a tabela com as opções para o idSchemaSPS
 	fmt.Println("__________________________________________________________________________")
@@ -92,12 +93,12 @@ func main() {
 
 	// Solicita o idSchemaSPS
 	fmt.Print(" -> Digite o idSchemaSPS: ")
-	fmt.Scanln(&idSchemaSPS)
+	//	fmt.Scanln(&idSchemaSPS)
 	fmt.Println("__________________________________________________________________________")
 
 	// Confirma execução
 	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Executar insert:\t<SIM> Enter \n\t\t\t<NAO> ctrl + c")
-	fmt.Scanln()
+	//	fmt.Scanln()
 	fmt.Println("__________________________________________________________________________")
 
 	// Lê todos os arquivos da pasta
@@ -117,46 +118,61 @@ func main() {
 		fmt.Println("--")
 		fmt.Printf("📂 Processando arquivo: %s\n", filePath)
 
-		// Processa o arquivo SQL
-		testName, processedSQL, idType, err := utils.ProcessTestCase(filePath)
+		// Processa o arquivo
+		testName, processedSQL, idType, err := utils.ProcessTestFile(filePath)
 		if err != nil {
 			log.Printf("❌ Erro ao processar %s: %v", filePath, err)
 			continue
 		}
-		fmt.Println("✅ Test case processado:", testName)
-		/*
-			// Inserir no banco
-			err = database.InsertTestCase(db, idType, testName, processedSQL, description, userName, idProject, idSchemaSPS)
-			if err != nil {
-				log.Printf("❌ Erro ao inserir %s no banco: %v", testName, err)
-				errorList = append(errorList, testName) // Adiciona à lista de erros
+		fmt.Println("✅ Test file processado:", testName)
 
-				continue
+		// Processa Insert
+		insertSolicitacao := utils.ProcessInsert(processedSQL)
+
+		//caso teste sps_solicitacao, idType = 3
+		if idType == "3" {
+			for i, script := range insertSolicitacao {
+				Name := fmt.Sprintf("%s_%d", testName, i)
+
+				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+				utils.SimulaInsert(idType, Name, script, userName, idProject, idSchemaSPS)
+				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+
+				fmt.Println("insertSolicitacao processado.")
+
+				/*
+					// Inserir no banco
+					err = database.InsertTestCase(db, idType, testName, processedSQL, description, userName, idProject, idSchemaSPS)
+					if err != nil {
+						log.Printf("❌ Erro ao inserir %s no banco: %v", testName, err)
+						errorList = append(errorList, testName) // Adiciona à lista de erros
+						continue
+					}
+					fmt.Println("✅ Test case inserido no banco:", testName)
+					successList = append(successList, testName) // Adiciona à lista de sucesso
+				*/
 			}
-			fmt.Println("✅ Test case inserido no banco:", testName)
-			successList = append(successList, testName) // Adiciona à lista de sucesso
-		*/
-		utils.SimulaInsert(idType, testName, processedSQL, userName, idProject, idSchemaSPS)
-		fmt.Println(db)
-
+		}
 	}
 
 	fmt.Println("🚀 Processamento concluído para todos os arquivos da pasta!")
-	// Exibe os resultados compilados
-	fmt.Println("\n### Resultados do insert no banco ###")
-	fmt.Printf("Insert com sucesso:\n")
-	for _, success := range successList {
-		fmt.Println("✅", success)
-	}
-
-	if len(errorList) > 0 {
-		fmt.Printf("\nInsert com erro:\n")
-		for _, failure := range errorList {
-			fmt.Println("❌", failure)
+	/*
+		// Exibe os resultados compilados
+		fmt.Println("\n### Resultados do insert no banco ###")
+		fmt.Printf("Insert com sucesso:\n")
+		for _, success := range successList {
+			fmt.Println("✅", success)
 		}
-	} else {
-		fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
-	}
 
-	fmt.Println("Processamento concluído!")
+		if len(errorList) > 0 {
+			fmt.Printf("\nInsert com erro:\n")
+			for _, failure := range errorList {
+				fmt.Println("❌", failure)
+			}
+		} else {
+			fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
+		}
+
+		fmt.Println("Processamento concluído!")
+	*/
 }

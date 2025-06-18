@@ -26,7 +26,7 @@ func ReadSQLFile(filePath string) string {
 }
 
 // ProcessTestCase verifica o tipo de conteúdo do arquivo e chama a função apropriada.
-func ProcessTestCase(filePath string) (string, string, string, error) {
+func ProcessTestFile(filePath string) (string, string, string, error) {
 	fileName := filepath.Base(filePath)                              // Pega apenas "arquivo.sql"
 	testName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) // Remove ".sql"
 
@@ -51,6 +51,16 @@ func ProcessTestCase(filePath string) (string, string, string, error) {
 		fmt.Println(err)
 		return "", "", "0", err
 	}
+}
+
+func ProcessInsert(processedSQL string) []string {
+	// Expressão regular para encontrar cada comando INSERT INTO SPS_SOLICITACAO.
+	reqIDModifierRe := regexp.MustCompile(`(?is)(seq_seq_geral\.NEXTVAL,\s*'?0'?(?:,\s*)?)'.*?'(\s*,\s*20)`)
+	modifiedProcessedSQL := reqIDModifierRe.ReplaceAllString(processedSQL, "$1<%TCID%>$2")
+	insertSplitterRe := regexp.MustCompile(`(?is)INSERT\s+INTO\s+SPS_SOLICITACAO\s*\(.*?\)\s*VALUES\s*\(.*?\)`)
+	inserts := insertSplitterRe.FindAllString(modifiedProcessedSQL, -1)
+
+	return inserts
 }
 
 // isJSON verifica se o conteúdo tem formato JSON válido (simples verificação).
@@ -91,10 +101,33 @@ func ProcessProvQ(testName, sqlContent string) (string, string, string, error) {
 	return testName, strings.Join(processedLines, "\n"), "2", nil
 }
 
-// ProcessSolicitacao - Processa inserts na tabela sps_solicitacao
+// testCounter é um contador global para gerar nomes de testes sequenciais únicos para cada INSERT.
+var testCounter int64 = 0
+
+// ProcessSolicitacao processa inserts na tabela sps_solicitacao.
+// Esta função extrai todos os comandos INSERT INTO SPS_SOLICITACAO (sem o ponto e vírgula final)
+// do conteúdo SQL e os retorna como uma única string concatenada.
+// O 'testName' de entrada é o nome base do arquivo e será retornado.
 func ProcessSolicitacao(testName, sqlContent string) (string, string, string, error) {
-	// TODO: Implementar regras específicas para sps_solicitacao
-	return testName, sqlContent, "3", nil
+	var extractedInserts []string // Para armazenar os scripts INSERT extraídos
+
+	re := regexp.MustCompile(`(?is)INSERT\s+INTO\s+SPS_SOLICITACAO\s*\(.*?\)\s*VALUES\s*\(.*?\)`)
+	matches := re.FindAllString(sqlContent, -1) // -1 para encontrar todas as ocorrências
+	if len(matches) == 0 {
+		return testName, "", "3", fmt.Errorf("❌ Nenhum INSERT INTO SPS_SOLICITACAO encontrado no arquivo: %s", testName)
+	}
+
+	// Para cada INSERT encontrado, adicione-o diretamente à lista de inserts extraídos.
+	for _, insertStatement := range matches {
+		extractedInserts = append(extractedInserts, insertStatement)
+	}
+
+	// Concatena todos os INSERTs extraídos em uma única string, separados por uma quebra de linha.
+	// Esta string concatenada será o 'processedSQL' retornado.
+	processedSQL := strings.Join(extractedInserts, "\n")
+
+	// Retorna o 'testName' original, a string concatenada de INSERTs, o tipo "3", e nil (sem erro).
+	return testName, processedSQL, "3", nil
 }
 
 // Função para processar o JSON e substituir o valor de "id" dentro de "correlacao" que está dentro de "ordem"
@@ -162,12 +195,12 @@ func SimulaInsert(idType, testName, processedSQL, userName, idProject, idSchemaS
 	fmt.Println("VERSION:", 1)
 	fmt.Println("ID Type:", idType)
 	fmt.Println("Nome:", testName)
-	fmt.Println("Script: \n", processedSQL)
 	fmt.Println("Description: ", "")
 	fmt.Println("DT_CREATION: ", "SYSDATE")
 	fmt.Println("DT_UPDATE: ", "SYSDATE")
 	fmt.Println("Usuário:", userName)
 	fmt.Println("Projeto:", idProject)
 	fmt.Println("Schema SPS:", idSchemaSPS)
+	fmt.Println("Script: \n", processedSQL)
 	fmt.Println("================================")
 }
