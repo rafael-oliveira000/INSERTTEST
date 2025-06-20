@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"insertTest/database"
 	"insertTest/utils"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -38,12 +39,43 @@ import (
 )
 
 func main() {
+	logFileName := "log/insertTest.log"
+	//    0644: Permissões do arquivo (leitura/escrita para o dono, leitura para grupo/outros).
+	file, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("❌ Erro ao abrir o arquivo de log '%s': %v", logFileName, err)
+	}
+	defer file.Close()
+	//-----------------------------------
+	// os.Stdout = file
+	//os.Stderr = file
+	//	log.SetOutput(file)
+	//log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	// --
+	// 1. Cria um "multi-writer" que escreve tanto para o arquivo quanto para os.Stdout (o terminal).
+	// O os.Stdout aqui é o *original* stdout do terminal.
+	multiWriter := io.MultiWriter(os.Stdout, file)
+
+	// 2. Redireciona a SAÍDA DO PACOTE LOG padrão do Go para o multi-writer.
+	// ISSO É O QUE FAZ log.Print/Println/Printf IREMM PARA AMBOS.
+	log.SetOutput(multiWriter)
+	//log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	// --- REMOVA OU COMENTE AS LINHAS ABAIXO, ELAS CAUSAM O ERRO ---
+	// os.Stdout = multiWriter // REMOVA ESTA LINHA
+	// os.Stderr = multiWriter // REMOVA ESTA LINHA
+
+	//-----------------------------------
+
 	db, err := database.Connect()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(db)
-	fmt.Println("✅ Repositorio conectado ao BD")
+	log.Println("_________")
+	log.Println(db)
+	log.Println("_________")
+
+	log.Println("✅ Repositorio conectado ao BD")
 
 	// Defina os parâmetros do teste
 	userName := "rafael.oliveira@m4sistemas.com.br"
@@ -62,49 +94,48 @@ func main() {
 	nameCounts := make(map[string]int)
 
 	// Usuário confirma que alterou a variavel folderPath
-	fmt.Println("❌ ATENÇÃO ❌ 📂 Alterou o valor de folderPath para o diretório desejado?")
-	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Confirma?\t<SIM> Enter \n\t\t<NAO> ctrl + c")
+	log.Print("❌ ATENÇÃO ❌")
+	log.Print("📂 Alterou o valor de folderPath para o diretório desejado?\n")
+	log.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Confirma?\t<SIM> Enter \n\t\t<NAO> ctrl + c")
 	fmt.Scanln(&folderPath)
 
-	fmt.Println("__________________________________________________________________________")
-	fmt.Println("userName default: " + userName)
-	fmt.Println("description default: " + description)
-	fmt.Println("idProject default: " + idProject)
-	fmt.Println("idSchemaSPS default: " + idSchemaSPS)
+	log.Println("__________________________________________________________________________")
+	log.Println("userName default: " + userName)
+	log.Println("description default: " + description)
+	log.Println("idProject default: " + idProject)
+	log.Println("idSchemaSPS default: " + idSchemaSPS)
 
 	// Solicita ao usuário para inserir os valores
-	fmt.Println("__________________________________________________________________________")
-	fmt.Println("				  116  InsertTest")
-	fmt.Println("	->			  296  MassaTesteClaro17/06/25")
-	fmt.Println("				  76   SequenciaEda+VOLTE")
-	fmt.Println("				  201  SequenciaEda")
-	fmt.Println("				  136  VNPSIX+VOLTE")
-	fmt.Println("				  137  MAGNOLIA")
-	fmt.Println("				  138  RSA")
-	fmt.Println("				  156  ESIM")
-	fmt.Println("				  203  VOLTE")
-	fmt.Println("				  277  Hermes")
-	fmt.Print(" -> Digite o idProject: ")
+	log.Println("__________________________________________________________________________")
+	log.Print(" # Digite o idProject: ")
+	log.Println("  	116  InsertTest")
+	log.Println("->	296  MassaTesteClaro17/06/25")
+	log.Println("  	76   SequenciaEda+VOLTE")
+	log.Println("  	201  SequenciaEda")
+	log.Println("  	136  VNPSIX+VOLTE")
+	log.Println("  	137  MAGNOLIA")
+	log.Println("  	138  RSA")
+	log.Println("  	156  ESIM")
+	log.Println("  	203  VOLTE")
+	log.Println("  	277  Hermes")
 	fmt.Scanln(&idProject)
 
-	// Exibe a tabela com as opções para o idSchemaSPS
-	fmt.Println("__________________________________________________________________________")
-	fmt.Println("  	  1 MVN")
-	fmt.Println("  	  2 NAC")
-	fmt.Println("->	 21 POS")
-	fmt.Println("  	101 FLX")
-	fmt.Println("  	102 PRE")
-	fmt.Println("  	103 HUB")
+	log.Println("__________________________________________________________________________")
+	log.Print(" # Digite o idSchemaSPS: ")
+	log.Println("  	  1 MVN")
+	log.Println("  	  2 NAC")
+	log.Println("->	 21 POS")
+	log.Println("  	101 FLX")
+	log.Println("  	102 PRE")
+	log.Println("  	103 HUB")
 
-	// Solicita o idSchemaSPS
-	fmt.Print(" -> Digite o idSchemaSPS: ")
 	fmt.Scanln(&idSchemaSPS)
-	fmt.Println("__________________________________________________________________________")
+	log.Println("__________________________________________________________________________")
 
 	// Confirma execução
-	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Executar insert:\t<SIM> Enter \n\t\t\t<NAO> ctrl + c")
+	log.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Executar insert:\t<SIM> Enter \n\t\t\t<NAO> ctrl + c")
 	fmt.Scanln()
-	fmt.Println("__________________________________________________________________________")
+	log.Println("__________________________________________________________________________")
 
 	// Lê todos os arquivos da pasta
 	files, err := os.ReadDir(folderPath)
@@ -120,8 +151,8 @@ func main() {
 
 		// Monta o caminho completo do arquivo
 		filePath := filepath.Join(folderPath, file.Name())
-		fmt.Println("--")
-		fmt.Printf("📂 Processando arquivo: %s\n", filePath)
+		log.Println("--")
+		log.Printf("📂 Processando arquivo: %s\n", filePath)
 
 		// Processa o arquivo (testName é o nome do arquivo sem extensão)
 		testName, insert, idType, err := utils.ProcessTestFile(filePath)
@@ -150,9 +181,9 @@ func main() {
 			finalName := fmt.Sprintf("%s_%d", baseName, currentCount)
 
 			//-------------------------------------------------------------------------------
-			fmt.Println("----INICIO SIMULA INSERT--------------------------------")
+			log.Println("----INICIO SIMULA INSERT--------------------------------")
 			utils.SimulaInsert(idType, finalName, description, script, userName, idProject, idSchemaSPS)
-			fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+			log.Println("----FIM SIMULA INSERT-----------------------------------")
 			//-------------------------------------------------------------------------------
 
 			/*
@@ -167,30 +198,30 @@ func main() {
 				//-------------------------------------------------------------------------------
 			*/
 
-			fmt.Println("✅ Test case inserido no banco:", finalName)
+			log.Println("✅ Test case inserido no banco:", finalName)
 			successList = append(successList, finalName) // Adiciona à lista de sucesso
 
 		}
 	}
 
-	fmt.Println("🚀 Processamento concluído para todos os arquivos da pasta!")
+	log.Println("🚀 Processamento concluído para todos os arquivos da pasta!")
 
 	// Exibe os resultados compilados
-	fmt.Println("\n### Resultados do insert no banco ###")
-	fmt.Printf("Insert com sucesso:\n")
-	//for _, success := range successList {
-	//	fmt.Println("✅", success)
-	//}
-
-	if len(errorList) > 0 {
-		fmt.Printf("\nInsert com erro:\n")
-		for _, failure := range errorList {
-			fmt.Println("❌", failure)
-		}
-	} else {
-		fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
+	log.Println("\n### Resultados do insert no banco ###")
+	log.Printf("Insert com sucesso:\n")
+	for _, success := range successList {
+		log.Println("✅", success)
 	}
 
-	fmt.Println("Processamento concluído!")
+	if len(errorList) > 0 {
+		log.Printf("\nInsert com erro:\n")
+		for _, failure := range errorList {
+			log.Println("❌", failure)
+		}
+	} else {
+		log.Printf("\n ❌ Nenhum Insert com erro ❌\n")
+	}
+
+	log.Println("Processamento concluído!")
 
 }
