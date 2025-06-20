@@ -32,6 +32,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	_ "github.com/sijms/go-ora/v2"
 )
@@ -52,15 +54,15 @@ func main() {
 	//folderPath := "testcase/provq/SIXBELL+VOLTE" // Caminho da pasta com os arquivos
 
 	description := ""
-	idProject := "116"  // insertTest
+	idProject := "296"  // MassaTesteClaro17/06/25
 	idSchemaSPS := "21" // POS
-	//	var successList []string
-	//	var errorList []string
+	var successList = make([]string, 0)
+	var errorList = make([]string, 0)
 
 	// Usuário confirma que alterou a variavel folderPath
 	fmt.Println("❌ ATENÇÃO ❌ 📂 Alterou o valor de folderPath para o diretório desejado?")
 	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Confirma?\t<SIM> Enter \n\t\t<NAO> ctrl + c")
-	//	fmt.Scanln(&folderPath)
+	fmt.Scanln(&folderPath)
 
 	fmt.Println("__________________________________________________________________________")
 	fmt.Println("userName default: " + userName)
@@ -70,7 +72,8 @@ func main() {
 
 	// Solicita ao usuário para inserir os valores
 	fmt.Println("__________________________________________________________________________")
-	fmt.Println("	->			  116  InsertTest")
+	fmt.Println("				  116  InsertTest")
+	fmt.Println("	->			  296  MassaTesteClaro17/06/25")
 	fmt.Println("				  76   SequenciaEda+VOLTE")
 	fmt.Println("				  201  SequenciaEda")
 	fmt.Println("				  136  VNPSIX+VOLTE")
@@ -80,7 +83,7 @@ func main() {
 	fmt.Println("				  203  VOLTE")
 	fmt.Println("				  277  Hermes")
 	fmt.Print(" -> Digite o idProject: ")
-	//	fmt.Scanln(&idProject)
+	fmt.Scanln(&idProject)
 
 	// Exibe a tabela com as opções para o idSchemaSPS
 	fmt.Println("__________________________________________________________________________")
@@ -93,12 +96,12 @@ func main() {
 
 	// Solicita o idSchemaSPS
 	fmt.Print(" -> Digite o idSchemaSPS: ")
-	//	fmt.Scanln(&idSchemaSPS)
+	fmt.Scanln(&idSchemaSPS)
 	fmt.Println("__________________________________________________________________________")
 
 	// Confirma execução
 	fmt.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Executar insert:\t<SIM> Enter \n\t\t\t<NAO> ctrl + c")
-	//	fmt.Scanln()
+	fmt.Scanln()
 	fmt.Println("__________________________________________________________________________")
 
 	// Lê todos os arquivos da pasta
@@ -124,55 +127,159 @@ func main() {
 			log.Printf("❌ Erro ao processar %s: %v", filePath, err)
 			continue
 		}
+
+		testName = "TESTCASE"
 		fmt.Println("✅ Test file processado:", testName)
 
 		// Processa Insert
 		insertSolicitacao := utils.ProcessInsert(processedSQL)
 
+		// Regex para acao
+		re := regexp.MustCompile(`SRV_TRX_TP_CD=([^;]+);`)
+		// Regex para IMSI
+		reIMSI := regexp.MustCompile(`IMSI=([^;]+);`)
+		// Regex para MSISDN
+		reMSISDN := regexp.MustCompile(`MSISDN=([^;]+);`)
+		// Nova Regex para HHUA, HLR ou HLREDA
+		reHLX := regexp.MustCompile(`(HHUA|HLREDA|HLR)=([^;]+);`)
+		// Regex para VOLTE (case-insensitive) - \b garante que é a palavra completa
+		reVOLTE := regexp.MustCompile(`(?i)\bVOLTE\b`) // `(?i)` para case-insensitive
+		// Regex para VPNSIX (case-insensitive)
+		reVPNSIX := regexp.MustCompile(`(?i)\bVPNSIX\b`)
+
+		nameCounts := make(map[string]int)
+
 		//caso teste sps_solicitacao, idType = 3
 		if idType == "3" {
-			for i, script := range insertSolicitacao {
-				Name := fmt.Sprintf("%s_%d", testName, i)
+			for _, script := range insertSolicitacao {
+				var baseName string
+				var imsiExtracted string
+				var msisdnExtracted string
+				var hlxExtracted string // Variável para armazenar o valor de HHUA/HLR/HLREDA
+				var volteFound bool     // Variável para indicar se VOLTE foi encontrado
+				var vpnsixFound bool    // Variável para indicar se VPNSIX foi encontrado
 
-				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
-				utils.SimulaInsert(idType, Name, script, userName, idProject, idSchemaSPS)
-				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+				matches := re.FindStringSubmatch(script)
+				if len(matches) > 1 {
+					baseName = matches[1]
+				} else {
+					baseName = testName
+				}
+				// Incrementa a contagem para este nome específico no map
+				nameCounts[baseName]++
+				currentCount := nameCounts[baseName]
+				// Constrói o nome final com a contagem específica
+				finalName := fmt.Sprintf("%s_%d", baseName, currentCount)
+				//-------------------------------------------------------------------------------
+				// --- Extração do IMSI ---
+				matchesIMSI := reIMSI.FindStringSubmatch(script)
+				if len(matchesIMSI) > 1 {
+					fullIMSI := matchesIMSI[1]
+					// Garante que pegamos apenas os primeiros 7 caracteres, se existirem
+					if len(fullIMSI) >= 7 {
+						imsiExtracted = fullIMSI[:7]
+					} else {
+						imsiExtracted = fullIMSI // Se for menor que 7, pega tudo
+					}
+				} else {
+					imsiExtracted = "" // Se não encontrar, deixa vazio
+				}
 
-				fmt.Println("insertSolicitacao processado.")
+				// --- Extração do MSISDN ---
+				matchesMSISDN := reMSISDN.FindStringSubmatch(script)
+				if len(matchesMSISDN) > 1 {
+					msisdnExtracted = matchesMSISDN[1]
+				} else {
+					msisdnExtracted = "" // Se não encontrar, deixa vazio
+				}
+
+				// --- Extração de HHUA/HLR/HLREDA ---
+				matchesHLX := reHLX.FindStringSubmatch(script)
+				if len(matchesHLX) > 2 {
+					hlxFieldName := matchesHLX[1] // Ex: "HHUA", "HLR", "HLREDA"
+					hlxValue := matchesHLX[2]     // Ex: "ValorHHUA1"
+					// Apenas alteramos a forma como hlxExtracted é formatado
+					hlxExtracted = fmt.Sprintf("%s=%s", hlxFieldName, hlxValue)
+				} else {
+					hlxExtracted = ""
+				}
+
+				// --- Verificação VOLTE E VPNSIX ---
+				// Usa FindString para verificar a existência, não precisa de submatches
+				if reVOLTE.FindString(script) != "" {
+					volteFound = true
+				}
+
+				if reVPNSIX.FindString(script) != "" {
+					vpnsixFound = true
+				}
+
+				// --- Construção da Description ---
+				// Vamos concatenar apenas se os valores foram encontrados
+				description := ""
+				parts := []string{}
+				if imsiExtracted != "" {
+					parts = append(parts, "IMSI="+imsiExtracted)
+				}
+				if msisdnExtracted != "" {
+					parts = append(parts, "MSISDN="+msisdnExtracted)
+				}
+				if hlxExtracted != "" { // Adiciona o campo HLX se for encontrado
+					parts = append(parts, hlxExtracted)
+				}
+				if volteFound {
+					parts = append(parts, "VOLTE") // Adiciona a string "VOLTE"
+				}
+				if vpnsixFound {
+					parts = append(parts, "VPNSIX") // Adiciona a string "VPNSIX"
+				}
+
+				// Junta as partes com um separador, se houver mais de uma
+				description = strings.Join(parts, ", ")
+
+				//-------------------------------------------------------------------------------
+				fmt.Println("----INICIO SIMULA INSERT--------------------------------")
+				utils.SimulaInsert(idType, finalName, description, script, userName, idProject, idSchemaSPS)
+				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+				//-------------------------------------------------------------------------------
 
 				/*
+					//-------------------------------------------------------------------------------
 					// Inserir no banco
-					err = database.InsertTestCase(db, idType, testName, processedSQL, description, userName, idProject, idSchemaSPS)
+					err = database.InsertTestCase(db, idType, finalName, script, description, userName, idProject, idSchemaSPS)
 					if err != nil {
-						log.Printf("❌ Erro ao inserir %s no banco: %v", testName, err)
-						errorList = append(errorList, testName) // Adiciona à lista de erros
+						log.Printf("❌ Erro ao inserir %s no banco: %v", finalName, err)
+						errorList = append(errorList, finalName) // Adiciona à lista de erros
 						continue
 					}
-					fmt.Println("✅ Test case inserido no banco:", testName)
-					successList = append(successList, testName) // Adiciona à lista de sucesso
+					//-------------------------------------------------------------------------------
 				*/
+
+				fmt.Println("✅ Test case inserido no banco:", finalName)
+				successList = append(successList, finalName) // Adiciona à lista de sucesso
+
 			}
 		}
 	}
 
 	fmt.Println("🚀 Processamento concluído para todos os arquivos da pasta!")
-	/*
-		// Exibe os resultados compilados
-		fmt.Println("\n### Resultados do insert no banco ###")
-		fmt.Printf("Insert com sucesso:\n")
-		for _, success := range successList {
-			fmt.Println("✅", success)
-		}
 
-		if len(errorList) > 0 {
-			fmt.Printf("\nInsert com erro:\n")
-			for _, failure := range errorList {
-				fmt.Println("❌", failure)
-			}
-		} else {
-			fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
-		}
+	// Exibe os resultados compilados
+	fmt.Println("\n### Resultados do insert no banco ###")
+	fmt.Printf("Insert com sucesso:\n")
+	for _, success := range successList {
+		fmt.Println("✅", success)
+	}
 
-		fmt.Println("Processamento concluído!")
-	*/
+	if len(errorList) > 0 {
+		fmt.Printf("\nInsert com erro:\n")
+		for _, failure := range errorList {
+			fmt.Println("❌", failure)
+		}
+	} else {
+		fmt.Printf("\n ❌ Nenhum Insert com erro ❌\n")
+	}
+
+	fmt.Println("Processamento concluído!")
+
 }

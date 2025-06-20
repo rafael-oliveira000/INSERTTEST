@@ -189,18 +189,18 @@ func ProcessRestJson(testName, jsonContent string) (string, string, string, erro
 }
 
 // Simular a valores processados no banco exibindo o SQL gerado
-func SimulaInsert(idType, testName, processedSQL, userName, idProject, idSchemaSPS string) {
+func SimulaInsert(idType, testName, description, processedSQL, userName, idProject, idSchemaSPS string) {
 	fmt.Println("==== SQL QUE SERIA INSERIDO ====")
 	fmt.Println("ID:", "Incrementado no banco")
 	fmt.Println("VERSION:", 1)
 	fmt.Println("ID Type:", idType)
 	fmt.Println("Nome:", testName)
-	fmt.Println("Description: ", "")
+	fmt.Println("Description: ", description)
 	fmt.Println("DT_CREATION: ", "SYSDATE")
 	fmt.Println("DT_UPDATE: ", "SYSDATE")
 	fmt.Println("Usuário:", userName)
 	fmt.Println("Projeto:", idProject)
 	fmt.Println("Schema SPS:", idSchemaSPS)
-	fmt.Println("Script: \n", processedSQL)
+	//	fmt.Println("Script: \n", processedSQL)
 	fmt.Println("================================")
 }
