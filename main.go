@@ -33,7 +33,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	_ "github.com/sijms/go-ora/v2"
 )
@@ -48,7 +47,6 @@ func main() {
 
 	// Defina os parâmetros do teste
 	userName := "rafael.oliveira@m4sistemas.com.br"
-	//folderPath := "testcase/provq" // Caminho da pasta com os arquivos
 	//folderPath := "testcase/rest/Hermes" // Caminho da pasta com os arquivos
 	folderPath := "testcase/solicitacao" // Caminho da pasta com os arquivos
 	//folderPath := "testcase/provq/SIXBELL+VOLTE" // Caminho da pasta com os arquivos
@@ -58,6 +56,10 @@ func main() {
 	idSchemaSPS := "21" // POS
 	var successList = make([]string, 0)
 	var errorList = make([]string, 0)
+	// Regex para acao
+	regexAcao := regexp.MustCompile(`SRV_TRX_TP_CD=([^;]+);`)
+	// Mapeia contagem de quantas vezes cada nome de teste foi inserido
+	nameCounts := make(map[string]int)
 
 	// Usuário confirma que alterou a variavel folderPath
 	fmt.Println("❌ ATENÇÃO ❌ 📂 Alterou o valor de folderPath para o diretório desejado?")
@@ -121,144 +123,53 @@ func main() {
 		fmt.Println("--")
 		fmt.Printf("📂 Processando arquivo: %s\n", filePath)
 
-		// Processa o arquivo
-		testName, processedSQL, idType, err := utils.ProcessTestFile(filePath)
+		// Processa o arquivo (testName é o nome do arquivo sem extensão)
+		testName, insert, idType, err := utils.ProcessTestFile(filePath)
 		if err != nil {
 			log.Printf("❌ Erro ao processar %s: %v", filePath, err)
 			continue
 		}
 
-		testName = "TESTCASE"
-		fmt.Println("✅ Test file processado:", testName)
+		for _, script := range insert {
+			var description string
+			var baseName string
 
-		// Processa Insert
-		insertSolicitacao := utils.ProcessInsert(processedSQL)
+			description = utils.GeraDescription(script)
 
-		// Regex para acao
-		re := regexp.MustCompile(`SRV_TRX_TP_CD=([^;]+);`)
-		// Regex para IMSI
-		reIMSI := regexp.MustCompile(`IMSI=([^;]+);`)
-		// Regex para MSISDN
-		reMSISDN := regexp.MustCompile(`MSISDN=([^;]+);`)
-		// Nova Regex para HHUA, HLR ou HLREDA
-		reHLX := regexp.MustCompile(`(HHUA|HLREDA|HLR)=([^;]+);`)
-		// Regex para VOLTE (case-insensitive) - \b garante que é a palavra completa
-		reVOLTE := regexp.MustCompile(`(?i)\bVOLTE\b`) // `(?i)` para case-insensitive
-		// Regex para VPNSIX (case-insensitive)
-		reVPNSIX := regexp.MustCompile(`(?i)\bVPNSIX\b`)
-
-		nameCounts := make(map[string]int)
-
-		//caso teste sps_solicitacao, idType = 3
-		if idType == "3" {
-			for _, script := range insertSolicitacao {
-				var baseName string
-				var imsiExtracted string
-				var msisdnExtracted string
-				var hlxExtracted string // Variável para armazenar o valor de HHUA/HLR/HLREDA
-				var volteFound bool     // Variável para indicar se VOLTE foi encontrado
-				var vpnsixFound bool    // Variável para indicar se VPNSIX foi encontrado
-
-				matches := re.FindStringSubmatch(script)
-				if len(matches) > 1 {
-					baseName = matches[1]
-				} else {
-					baseName = testName
-				}
-				// Incrementa a contagem para este nome específico no map
-				nameCounts[baseName]++
-				currentCount := nameCounts[baseName]
-				// Constrói o nome final com a contagem específica
-				finalName := fmt.Sprintf("%s_%d", baseName, currentCount)
-				//-------------------------------------------------------------------------------
-				// --- Extração do IMSI ---
-				matchesIMSI := reIMSI.FindStringSubmatch(script)
-				if len(matchesIMSI) > 1 {
-					fullIMSI := matchesIMSI[1]
-					// Garante que pegamos apenas os primeiros 7 caracteres, se existirem
-					if len(fullIMSI) >= 7 {
-						imsiExtracted = fullIMSI[:7]
-					} else {
-						imsiExtracted = fullIMSI // Se for menor que 7, pega tudo
-					}
-				} else {
-					imsiExtracted = "" // Se não encontrar, deixa vazio
-				}
-
-				// --- Extração do MSISDN ---
-				matchesMSISDN := reMSISDN.FindStringSubmatch(script)
-				if len(matchesMSISDN) > 1 {
-					msisdnExtracted = matchesMSISDN[1]
-				} else {
-					msisdnExtracted = "" // Se não encontrar, deixa vazio
-				}
-
-				// --- Extração de HHUA/HLR/HLREDA ---
-				matchesHLX := reHLX.FindStringSubmatch(script)
-				if len(matchesHLX) > 2 {
-					hlxFieldName := matchesHLX[1] // Ex: "HHUA", "HLR", "HLREDA"
-					hlxValue := matchesHLX[2]     // Ex: "ValorHHUA1"
-					// Apenas alteramos a forma como hlxExtracted é formatado
-					hlxExtracted = fmt.Sprintf("%s=%s", hlxFieldName, hlxValue)
-				} else {
-					hlxExtracted = ""
-				}
-
-				// --- Verificação VOLTE E VPNSIX ---
-				// Usa FindString para verificar a existência, não precisa de submatches
-				if reVOLTE.FindString(script) != "" {
-					volteFound = true
-				}
-
-				if reVPNSIX.FindString(script) != "" {
-					vpnsixFound = true
-				}
-
-				// --- Construção da Description ---
-				// Vamos concatenar apenas se os valores foram encontrados
-				description := ""
-				parts := []string{}
-				if imsiExtracted != "" {
-					parts = append(parts, "IMSI="+imsiExtracted)
-				}
-				if msisdnExtracted != "" {
-					parts = append(parts, "MSISDN="+msisdnExtracted)
-				}
-				if hlxExtracted != "" { // Adiciona o campo HLX se for encontrado
-					parts = append(parts, hlxExtracted)
-				}
-				if volteFound {
-					parts = append(parts, "VOLTE") // Adiciona a string "VOLTE"
-				}
-				if vpnsixFound {
-					parts = append(parts, "VPNSIX") // Adiciona a string "VPNSIX"
-				}
-
-				// Junta as partes com um separador, se houver mais de uma
-				description = strings.Join(parts, ", ")
-
-				//-------------------------------------------------------------------------------
-				fmt.Println("----INICIO SIMULA INSERT--------------------------------")
-				utils.SimulaInsert(idType, finalName, description, script, userName, idProject, idSchemaSPS)
-				fmt.Println("----FIM SIMULA INSERT-----------------------------------")
-				//-------------------------------------------------------------------------------
-
-				/*
-					//-------------------------------------------------------------------------------
-					// Inserir no banco
-					err = database.InsertTestCase(db, idType, finalName, script, description, userName, idProject, idSchemaSPS)
-					if err != nil {
-						log.Printf("❌ Erro ao inserir %s no banco: %v", finalName, err)
-						errorList = append(errorList, finalName) // Adiciona à lista de erros
-						continue
-					}
-					//-------------------------------------------------------------------------------
-				*/
-
-				fmt.Println("✅ Test case inserido no banco:", finalName)
-				successList = append(successList, finalName) // Adiciona à lista de sucesso
-
+			matches := regexAcao.FindStringSubmatch(script)
+			if len(matches) > 1 {
+				baseName = matches[1]
+			} else {
+				baseName = testName
 			}
+
+			// Incrementa a contagem para este nome específico no map
+			nameCounts[baseName]++
+			currentCount := nameCounts[baseName]
+			// Constrói o nome final com a contagem específica
+			finalName := fmt.Sprintf("%s_%d", baseName, currentCount)
+
+			//-------------------------------------------------------------------------------
+			fmt.Println("----INICIO SIMULA INSERT--------------------------------")
+			utils.SimulaInsert(idType, finalName, description, script, userName, idProject, idSchemaSPS)
+			fmt.Println("----FIM SIMULA INSERT-----------------------------------")
+			//-------------------------------------------------------------------------------
+
+			/*
+				//-------------------------------------------------------------------------------
+				// Inserir no banco
+				err = database.InsertTestCase(db, idType, finalName, script, description, userName, idProject, idSchemaSPS)
+				if err != nil {
+					log.Printf("❌ Erro ao inserir %s no banco: %v", finalName, err)
+					errorList = append(errorList, finalName) // Adiciona à lista de erros
+					continue
+				}
+				//-------------------------------------------------------------------------------
+			*/
+
+			fmt.Println("✅ Test case inserido no banco:", finalName)
+			successList = append(successList, finalName) // Adiciona à lista de sucesso
+
 		}
 	}
 
@@ -267,9 +178,9 @@ func main() {
 	// Exibe os resultados compilados
 	fmt.Println("\n### Resultados do insert no banco ###")
 	fmt.Printf("Insert com sucesso:\n")
-	for _, success := range successList {
-		fmt.Println("✅", success)
-	}
+	//for _, success := range successList {
+	//	fmt.Println("✅", success)
+	//}
 
 	if len(errorList) > 0 {
 		fmt.Printf("\nInsert com erro:\n")
