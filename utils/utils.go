@@ -101,8 +101,11 @@ func ProcessProvQ(testName, sqlContent string) (string, []string, string, error)
 func ProcessSolicitacao(testName, sqlContent string) (string, []string, string, error) {
 	var extractedInserts []string // Para armazenar os scripts INSERT extraídos
 
+	reBugParenteses := regexp.MustCompile(`(?i)\((a|crt)\)`)
+	sqlContentLimpo := reBugParenteses.ReplaceAllString(sqlContent, "")
+
 	re := regexp.MustCompile(`(?is)INSERT\s+INTO\s+SPS_SOLICITACAO\s*\(.*?\)\s*VALUES\s*\(.*?\)`)
-	matches := re.FindAllString(sqlContent, -1) // -1 para encontrar todas as ocorrências
+	matches := re.FindAllString(sqlContentLimpo, -1) // -1 para encontrar todas as ocorrências
 	if len(matches) == 0 {
 		return testName, nil, "3", fmt.Errorf("❌ Nenhum INSERT INTO SPS_SOLICITACAO encontrado no arquivo: %s", testName)
 	}

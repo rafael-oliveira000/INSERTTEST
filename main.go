@@ -23,7 +23,6 @@
 * * *
 * * * # ATENÇÃO:
 * * * 		1- Esse projeto remove as substring "(A)" e "(CRT)" dos inserts de SPS_SOLICITACAO em utils.ProcessSolicitacao para evitar erros de sintaxe
-* * * 			Exemplos:
 * * * 				FTRCD=VPNST;FTR_STATUS=A;CC=91446740;CCNM=SR(A) Marcelo Rosa da Silva;DPTO1=91446740;DPTONM1=SR(A) Marcelo Rosa da Silva;@
 * * *				NOM_OPER=VIVO - RS (CRT);@
 * * *
