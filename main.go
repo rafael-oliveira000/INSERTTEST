@@ -21,6 +21,12 @@
 * * *		4- Pode alterar o valor da variavel description do test case de acordo com a demanda da remessa de teste
 * * *		5- Em caso de erro, repita o processo apenas com as falhas até que todos sejam inseridos
 * * *
+* * * # ATENÇÃO:
+* * * 		1- Esse projeto remove as substring "(A)" e "(CRT)" dos inserts de SPS_SOLICITACAO em utils.ProcessSolicitacao para evitar erros de sintaxe
+* * * 			Exemplos:
+* * * 				FTRCD=VPNST;FTR_STATUS=A;CC=91446740;CCNM=SR(A) Marcelo Rosa da Silva;DPTO1=91446740;DPTONM1=SR(A) Marcelo Rosa da Silva;@
+* * *				NOM_OPER=VIVO - RS (CRT);@
+* * *
 * * */
 
 package main
@@ -61,10 +67,6 @@ func main() {
 	log.SetOutput(multiWriter)
 	//log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	// --- REMOVA OU COMENTE AS LINHAS ABAIXO, ELAS CAUSAM O ERRO ---
-	// os.Stdout = multiWriter // REMOVA ESTA LINHA
-	// os.Stderr = multiWriter // REMOVA ESTA LINHA
-
 	//-----------------------------------
 
 	db, err := database.Connect()
@@ -79,19 +81,16 @@ func main() {
 
 	// Defina os parâmetros do teste
 	userName := "rafael.oliveira@m4sistemas.com.br"
-	//folderPath := "testcase/rest/Hermes" // Caminho da pasta com os arquivos
-	folderPath := "testcase/solicitacao" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/rest/SequenciaEDA_MVN" // Caminho da pasta com os arquivos
+	folderPath := "testcase/provq" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/provq/HS" // Caminho da pasta com os arquivos
 	//folderPath := "testcase/provq/SIXBELL+VOLTE" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/provq/Base_TELCO" // Caminho da pasta com os arquivos
+	//folderPath := "testcase/request/MIGRACAO_LIVRE/grupo_1" // Caminho da pasta com os arquivos
 
 	description := ""
-	idProject := "296"  // MassaTesteClaro17/06/25
-	idSchemaSPS := "21" // POS
-	var successList = make([]string, 0)
-	var errorList = make([]string, 0)
-	// Regex para acao
-	regexAcao := regexp.MustCompile(`SRV_TRX_TP_CD=([^;]+);`)
-	// Mapeia contagem de quantas vezes cada nome de teste foi inserido
-	nameCounts := make(map[string]int)
+	idProject := "116"  // insert test
+	idSchemaSPS := "21" //	POS
 
 	// Usuário confirma que alterou a variavel folderPath
 	log.Print("❌ ATENÇÃO ❌")
@@ -108,8 +107,9 @@ func main() {
 	// Solicita ao usuário para inserir os valores
 	log.Println("__________________________________________________________________________")
 	log.Print(" # Digite o idProject: ")
-	log.Println("  	116  InsertTest")
-	log.Println("->	296  MassaTesteClaro17/06/25")
+	log.Println("->	116  InsertTest")
+	log.Println("	476  MSE APIGee")
+	log.Println("	296  MassaTesteClaro17/06/25")
 	log.Println("  	76   SequenciaEda+VOLTE")
 	log.Println("  	201  SequenciaEda")
 	log.Println("  	136  VNPSIX+VOLTE")
@@ -118,24 +118,37 @@ func main() {
 	log.Println("  	156  ESIM")
 	log.Println("  	203  VOLTE")
 	log.Println("  	277  Hermes")
+	log.Println("	336  DRAs_HUAWEI_ERICSSON")
+	log.Println("	201  SequenciaEDA_MVN")
+	log.Println("	356  AJUSTE CSP SIXBELL VOLTE LEGADO")
+	log.Println("	376  MIGRACAO LIV_FIX")
+	log.Println("	416  Base_TELCO")
 	fmt.Scanln(&idProject)
 
 	log.Println("__________________________________________________________________________")
 	log.Print(" # Digite o idSchemaSPS: ")
-	log.Println("  	  1 MVN")
+	log.Println("     1 MVN")
 	log.Println("  	  2 NAC")
 	log.Println("->	 21 POS")
-	log.Println("  	101 FLX")
-	log.Println("  	102 PRE")
-	log.Println("  	103 HUB")
-
+	log.Println("	101 FLX")
+	log.Println("	102 PRE")
+	log.Println("	103 HUB")
+	log.Println("	 28 FIX")
 	fmt.Scanln(&idSchemaSPS)
+
 	log.Println("__________________________________________________________________________")
 
 	// Confirma execução
 	log.Print("\n📂 folderPath = " + folderPath + "\n\n📂 Executar insert:\t<SIM> Enter \n\t\t\t<NAO> ctrl + c")
 	fmt.Scanln()
 	log.Println("__________________________________________________________________________")
+
+	var successList = make([]string, 0)
+	var errorList = make([]string, 0)
+	// Regex para acao
+	regexAcao := regexp.MustCompile(`SRV_TRX_TP_CD=([^;]+);`)
+	// Mapeia contagem de quantas vezes cada nome de teste foi inserido
+	nameCounts := make(map[string]int)
 
 	// Lê todos os arquivos da pasta
 	files, err := os.ReadDir(folderPath)
@@ -177,29 +190,31 @@ func main() {
 			// Incrementa a contagem para este nome específico no map
 			nameCounts[baseName]++
 			currentCount := nameCounts[baseName]
-			// Constrói o nome final com a contagem específica
+			//Constrói o nome final com a contagem específica
 			finalName := fmt.Sprintf("%s_%d", baseName, currentCount)
 
-			//-------------------------------------------------------------------------------
-			log.Println("----INICIO SIMULA INSERT--------------------------------")
-			utils.SimulaInsert(idType, finalName, description, script, userName, idProject, idSchemaSPS)
+			//baseName = utils.ProcessBaseNameLIVRE(baseName) // Processa o nome base para atender às regras de nomenclatura
+
+			//--------------------------------
+			// -----------------------------------------------
+			// log.Println("----INICIO SIMULA INSERT--------------------------------")
+			//
+			utils.SimulaInsert(idType /*finalName, */, baseName, description, script, userName, idProject, idSchemaSPS)
 			log.Println("----FIM SIMULA INSERT-----------------------------------")
 			//-------------------------------------------------------------------------------
 
-			/*
-				//-------------------------------------------------------------------------------
-				// Inserir no banco
-				err = database.InsertTestCase(db, idType, finalName, script, description, userName, idProject, idSchemaSPS)
-				if err != nil {
-					log.Printf("❌ Erro ao inserir %s no banco: %v", finalName, err)
-					errorList = append(errorList, finalName) // Adiciona à lista de erros
-					continue
-				}
-				//-------------------------------------------------------------------------------
-			*/
+			//-------------------------------------------------------------------------------
+			// Inserir no banco
+			//err = database.InsertTestCase(db, idType, finalName /*/, baseName*/, script, description, userName, idProject, idSchemaSPS)
+			if err != nil {
+				log.Printf("❌ Erro ao inserir %s no banco: %v" /*finalName */, baseName, err)
+				errorList = append(errorList, finalName /*, baseName*/) // Adiciona à lista de erros
+				continue
+			}
+			//-------------------------------------------------------------------------------
 
-			log.Println("✅ Test case inserido no banco:", finalName)
-			successList = append(successList, finalName) // Adiciona à lista de sucesso
+			log.Println("✅ Test case inserido no banco:", finalName /*, baseName*/)
+			successList = append(successList, finalName /*, baseName*/) // Adiciona à lista de sucesso
 
 		}
 	}
